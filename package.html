@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Booking Pakej</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 30px auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+    }
+
+    img {
+      width: 100%;
+      height: 280px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+
+    .date-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+
+    .date-card.selected {
+      border-color: green;
+      background: #f0fff0;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+    }
+
+    button {
+      background: green;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div style="text-align:center; margin-bottom:15px;">
+  <img src="./img/logo.png"
+       alt="Logo"
+       style="
+         max-width:160px;
+         max-height:80px;
+         width:auto;
+         height:auto;
+         object-fit:contain;
+       ">
+</div>
+
+  <h1 id="nama"></h1>
+  <p id="lokasi"></p>
+  <img id="gambar"
+     onerror="this.src='https://via.placeholder.com/800x400?text=Tiada+Gambar'">
+  <p id="desc"></p>
+  <p style="font-size:14px;color:#444;line-height:1.5;">
+  Trip dikendalikan oleh crew berpengalaman.<br>
+  Slot terhad. Tempahan akan disahkan melalui WhatsApp.<br>  
+  Deposit diperlukan untuk pengesahan penyertaan.
+</p>
+
+
+  <h3>Pilih Tarikh</h3>
+  <div id="dateList"></div>
+
+  <h3>Maklumat Peserta</h3>
+  <input id="custNama" placeholder="Nama Penuh">
+  <input id="custIC" placeholder="No IC">
+  <input id="custPhone" placeholder="No Telefon">
+  <input id="custEmergency" placeholder="No Kecemasan">
+
+  <button onclick="submitBooking()">Hantar Booking</button>
+
+  <iframe name="hidden_iframe" style="display:none;"></iframe>
+
+  <form
+    id="sheetForm"
+    action="https://docs.google.com/forms/d/1DY73B5hxSwolgREX4T_28WipOQtM5f0QxxmvQnuVoyE/formResponse"
+    method="POST"
+    target="hidden_iframe">
+
+    <input type="hidden" name="entry.573448059" id="f_booking_id">
+    <input type="hidden" name="entry.1039730403" id="f_package_id">
+    <input type="hidden" name="entry.1282479567" id="f_date_id">
+    <input type="hidden" name="entry.494972244" id="f_tarikh">
+    <input type="hidden" name="entry.1412040576" id="f_harga">
+    <input type="hidden" name="entry.654010104" id="f_nama">
+    <input type="hidden" name="entry.202029002" id="f_ic">
+    <input type="hidden" name="entry.1631503225" id="f_phone">
+    <input type="hidden" name="entry.554194303" id="f_emergency">
+  </form>
+
+</div>
+
+<script>
+/* ===== DATA ===== */
+const PACKAGES = [
+  {
+    id: "A",
+    nama: "Gunung Ledang",
+    lokasi: "Johor",
+    desc: "Hiking santai 1 hari",
+    img: "img/ledang.jpg"
+  },
+  {
+    id: "B",
+    nama: "Gunung Tahan",
+    lokasi: "Pahang",
+    desc: "Ekspedisi 3 hari 2 malam",
+    img: "img/tahan.jpg"
+  }
+];
+
+const PACKAGE_DATES = [
+  { date_id: "D001", package_id: "A", tarikh: "2026-03-15", harga: 150, slot_baki: 10 },
+  { date_id: "D002", package_id: "A", tarikh: "2026-04-02", harga: 150, slot_baki: 8 },
+  { date_id: "D003", package_id: "B", tarikh: "2026-05-10", harga: 450, slot_baki: 5 }
+];
+
+let selectedDate = null;
+
+/* ===== INIT ===== */
+const params = new URLSearchParams(window.location.search);
+const packageId = params.get("id");
+
+const selectedPackage = PACKAGES.find(p => p.id === packageId);
+
+if (!selectedPackage) {
+  document.body.innerHTML = "Pakej tidak dijumpai. Sila buka dari senarai pakej.";
+} else {
+  document.getElementById("nama").innerText = selectedPackage.nama;
+  document.getElementById("lokasi").innerText = selectedPackage.lokasi;
+  document.getElementById("desc").innerText = selectedPackage.desc;
+  document.getElementById("gambar").src = selectedPackage.img;
+}
+
+/* ===== TARIKH ===== */
+const dateList = document.getElementById("dateList");
+
+PACKAGE_DATES
+  .filter(d => d.package_id === packageId)
+  .forEach(d => {
+    const div = document.createElement("div");
+    div.className = "date-card";
+    div.innerHTML = `
+  <strong>${d.tarikh}</strong><br>
+  Harga: RM${d.harga}
+`;
+
+    div.onclick = () => {
+      document.querySelectorAll(".date-card")
+        .forEach(el => el.classList.remove("selected"));
+      div.classList.add("selected");
+      selectedDate = d;
+    };
+    dateList.appendChild(div);
+  });
+
+/* ===== SUBMIT ===== */
+function submitBooking() {
+  if (!selectedDate) {
+    alert("Sila pilih tarikh");
+    return;
+  }
+
+  const nama = custNama.value;
+  const phone = custPhone.value;
+
+  if (!nama || !phone) {
+    alert("Sila isi nama & telefon");
+    return;
+  }
+
+  const bookingId = "BGH" + Date.now();
+
+  f_booking_id.value = bookingId;
+  f_package_id.value = selectedDate.package_id;
+  f_date_id.value = selectedDate.date_id;
+  f_tarikh.value = selectedDate.tarikh;
+  f_harga.value = selectedDate.harga;
+  f_nama.value = nama;
+  f_ic.value = custIC.value;
+  f_phone.value = phone;
+  f_emergency.value = custEmergency.value;
+
+  sheetForm.submit();
+
+const mesej =
+  "TEMPAHAN HIKING\n\n" +
+  "Order ID: " + bookingId + "\n\n" +
+  "Pakej: " + selectedPackage.nama + "\n" +
+  "Tarikh: " + selectedDate.tarikh + "\n" +
+  "Harga: RM" + selectedDate.harga + "\n\n" +
+  "Nama: " + nama + "\n" +
+  "Telefon: " + phone + "\n\n" +
+  "Terima kasih! Kami akan hubungi anda untuk pengesahan.";
+
+const whatsappNo = "601116560915"; // ⬅️ TUKAR NO KAU
+
+setTimeout(function () {
+  window.location.href =
+    "https://wa.me/" + whatsappNo +
+    "?text=" + encodeURIComponent(mesej);
+}, 800);
+
+  alert("Booking direkod. ID: " + bookingId);
+}
+</script>
+<hr>
+
+<p style="
+  text-align:center;
+  font-size:12px;
+  color:#777;
+  line-height:1.5;
+">
+Penganjur: GoHike Crew Services<br>
+Hubungi: WhatsApp 01135318911<br><br>
+Maklumat pelanggan digunakan untuk tujuan pengurusan trip sahaja.
+</p>
+
+</body>
+</html>
